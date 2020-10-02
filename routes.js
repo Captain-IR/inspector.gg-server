@@ -51,18 +51,54 @@ router.get('/match', async function (req, res, next) {
 			teamId: team.teamId,
 			win: team.win,
 		}))
-		const participants = match.response.participants.map(player => ({
-			participantId: player.participantId,
-			teamId: player.teamId,
-			championId: player.championId,
+		const participants = match.response.participants.map(async part => {
+			const champion = await getChampionName(part.championId)
+			return {
+				participantId: part.participantId,
+				teamId: part.teamId,
+				champion,
+			}
+		})
+		const parts = await Promise.all(participants)
+
+		const participantIdentities = match.response.participantIdentities.map(partId => ({
+			participantId: partId.participantId,
+			player: partId.player.summonerName,
+			profileIcon: partId.player.profileIcon,
 		}))
-		const participantIdentities = match.response.participantIdentities.map(player => ({
-			participantId: player.participantId,
-			player: player.player.summonerName,
-		}))
-		res
-			.status(200)
-			.json({ match: { ...match.response, teams, participants, participantIdentities } })
+
+		let newParts = []
+		for (const part of parts) {
+			for (const partId of participantIdentities) {
+				if (part.participantId === partId.participantId) {
+					// console.log('Champion ID', part.championId)
+					newParts.push({
+						...part,
+						player: partId.player,
+						profileIcon: partId.profileIcon,
+					})
+				}
+			}
+		}
+		let total = []
+		for (const team of teams) {
+			for (const part of newParts) {
+				if (team.teamId === part.teamId) {
+					total.push({ ...team, ...part })
+				}
+			}
+		}
+		// console.log('newParts: ', newParts)
+		// console.log('total: ', total)
+		// console.log('teams: ', teams)
+		// console.log('participants: ', participants)
+		// console.log('participantIdentities: ', participantIdentities)
+		res.status(200).json({
+			match: {
+				gameMode: match.response.gameMode,
+				total,
+			},
+		})
 	} catch (error) {
 		console.log(error)
 	}
@@ -70,16 +106,25 @@ router.get('/match', async function (req, res, next) {
 
 router.get('/champion', async function (req, res, next) {
 	const championId = req.query.id
+	getChampionName(championId).then(champ => {
+		res.status(200).json(champ)
+	})
+})
+
+async function getChampionName(championId) {
 	try {
 		const champions = await api.DataDragon.getChampion()
 		const championNames = Object.keys(champions.data)
-		const champion = championNames.filter(champ =>
-			champions.data[champ].key === championId ? true : false
-		)
-		res.status(200).json({ name: champions.data[champion].id })
+		const champion = championNames.find(champ => {
+			// console.log('champion key: ', champions.data[champ].key)
+			// console.log('champion id: ', championId)
+			return champions.data[champ].key == championId
+		})
+		// console.log(champion)
+		return champions.data[champion].id
 	} catch (error) {
 		console.log(error)
 	}
-})
+}
 
 module.exports = router
