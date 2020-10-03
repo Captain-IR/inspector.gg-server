@@ -16,7 +16,18 @@ app.use(express.static(path.join(__dirname, 'public')))
 
 app.use('/', indexRouter)
 
+app.use((error, req, res, next) => {
+	console.log(error)
+	const status = error.statusCode
+	const message = error.message
+	const data = error.data
+	res.status(status).json({
+		message,
+		data,
+	})
+})
+
 const port = process.env.PORT || 5000
-app.listen(5000, () => {
+app.listen(port, () => {
 	console.log(`Listing on port ${port}`)
 })

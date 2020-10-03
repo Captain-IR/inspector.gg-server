@@ -23,8 +23,11 @@ router.get('/summoner', async function (req, res, next) {
 	try {
 		const summoner = await api.Summoner.getByName(summonerName, Constants.Regions[region])
 		res.status(200).json({ summoner: summoner.response })
-	} catch (error) {
-		console.log(error)
+	} catch (err) {
+		if (!err.statusCode) {
+			err.statusCode = 500
+		}
+		next(err)
 	}
 })
 
@@ -46,8 +49,11 @@ router.get('/matches', async function (req, res, next) {
 		})
 		minifiedArray = await Promise.all(minifiedArray)
 		res.status(200).json({ matches: minifiedArray })
-	} catch (error) {
-		console.log(error)
+	} catch (err) {
+		if (!err.statusCode) {
+			err.statusCode = 500
+		}
+		next(err)
 	}
 })
 
@@ -59,28 +65,32 @@ router.get('/champion', async function (req, res, next) {
 })
 
 async function getMatchData(gameId, region) {
-	const match = await api.Match.get(gameId, Constants.Regions[region])
-	let newParticipants = []
-	for (const part of match.response.participants) {
-		for (const partId of match.response.participantIdentities) {
-			if (part.participantId === partId.participantId) {
-				newParticipants.push({
-					...part,
-					...partId,
-				})
+	try {
+		const match = await api.Match.get(gameId, Constants.Regions[region])
+		let newParticipants = []
+		for (const part of match.response.participants) {
+			for (const partId of match.response.participantIdentities) {
+				if (part.participantId === partId.participantId) {
+					newParticipants.push({
+						...part,
+						...partId,
+					})
+				}
 			}
 		}
-	}
-	let total = []
-	for (const team of match.response.teams) {
-		for (const part of newParticipants) {
-			if (team.teamId === part.teamId) {
-				const championName = await getChampionName(part.championId)
-				total.push({ ...team, ...part, championId: championName })
+		let total = []
+		for (const team of match.response.teams) {
+			for (const part of newParticipants) {
+				if (team.teamId === part.teamId) {
+					const championName = await getChampionName(part.championId)
+					total.push({ ...team, ...part, championId: championName })
+				}
 			}
 		}
+		return total
+	} catch (error) {
+		return error
 	}
-	return total
 }
 
 async function getChampionName(championId) {
@@ -92,7 +102,7 @@ async function getChampionName(championId) {
 		})
 		return champions.data[champion].id // championName
 	} catch (error) {
-		console.log(error)
+		return error
 	}
 }
 
