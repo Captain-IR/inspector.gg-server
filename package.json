@@ -1,6 +1,9 @@
 {
-	"name": "twisted-server",
-	"version": "0.0.0",
+	"name": "leagous-server",
+	"version": "1.0.0",
+	"description": "Leagous API server for data analysis before reaching the front-end",
+	"author": "Captain IR",
+	"license": "MIT",
 	"private": true,
 	"scripts": {
 		"dev": "nodemon app.js",
